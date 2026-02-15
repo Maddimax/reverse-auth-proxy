@@ -6,6 +6,7 @@ A simple Express-based reverse proxy with JWT authentication. This proxy verifie
 
 - 🔒 JWT token verification via cookies
 - 🔄 Reverse proxy to a single upstream HTTP server
+- 🔌 WebSocket support with JWT authentication
 - ↪️ Configurable redirect URL for authentication failures
 - 🚀 Simple configuration via environment variables
 - 🔓 Support for public paths (bypass authentication)
@@ -137,6 +138,8 @@ The `docker-compose.yml` file includes example configuration. Update the environ
 
 ## How It Works
 
+### HTTP Requests
+
 1. **Request arrives** at the proxy server
 2. **Cookie check**: The proxy looks for a JWT token in the specified cookie
 3. **Verification**:
@@ -145,6 +148,17 @@ The `docker-compose.yml` file includes example configuration. Update the environ
 4. **Headers**: Valid JWT claims (userId, email) are forwarded to upstream as headers:
    - `X-User-Id`: User ID from JWT
    - `X-User-Email`: Email from JWT
+
+### WebSocket Connections
+
+WebSocket connections are also protected by JWT authentication:
+
+1. **WebSocket upgrade request** arrives at the proxy
+2. **Cookie check**: The proxy extracts the JWT token from the WebSocket upgrade request cookies
+3. **Verification**:
+   - If the token is valid, the WebSocket connection is upgraded and proxied to the upstream server
+   - If the token is missing or invalid, the connection is rejected with 401 Unauthorized
+4. **Headers**: User information is forwarded in the WebSocket upgrade headers
 
 ### Public Paths
 
@@ -186,9 +200,26 @@ curl -i http://localhost:3000/api/test \
   --cookie "auth_token=your.jwt.token"
 ```
 
+### Testing WebSocket Connections
+
+You can test WebSocket connections using tools like `wscat`:
+
+```bash
+# Install wscat
+npm install -g wscat
+
+# Connect to WebSocket with authentication cookie
+wscat -c ws://localhost:3000/websocket \
+  -H "Cookie: auth_token=your.jwt.token"
+```
+
+WebSocket connections without a valid JWT token will be rejected with a 401 Unauthorized response.
+
 ## Error Handling
 
-- **No token / Invalid token**: Redirects to `REDIRECT_URL`
+- **No token / Invalid token**: 
+  - HTTP requests: Redirects to `REDIRECT_URL`
+  - WebSocket connections: Rejected with 401 Unauthorized
 - **Upstream connection fails**: Returns 502 Bad Gateway
 - **Server errors**: Returns 500 Internal Server Error
 

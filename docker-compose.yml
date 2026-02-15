@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   reverse-auth-proxy:
-    build: .
-    container_name: reverse-auth-proxy
+    image: maddimax/reverse-auth-proxy:latest
     ports:
       - "3000:3000"
     environment:
