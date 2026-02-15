@@ -51,6 +51,14 @@ func parseCookies(cookieHeader string) map[string]string {
 	return cookies
 }
 
+// isTokenExpired checks if the JWT token has expired
+func isTokenExpired(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "token is expired")
+}
+
 // verifyJWT verifies the JWT token and returns the claims
 func verifyJWT(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
@@ -98,6 +106,13 @@ func authMiddleware(next http.Handler) http.Handler {
 		// Verify JWT
 		claims, err := verifyJWT(cookie.Value)
 		if err != nil {
+			// Check if token expired and redirect to auth URL
+			if isTokenExpired(err) {
+				authURL := config.JWTTimeoutURL + url.QueryEscape(r.RequestURI)
+				log.Printf("JWT token expired, redirecting to %s", authURL)
+				http.Redirect(w, r, authURL, http.StatusFound)
+				return
+			}
 			log.Printf("JWT verification failed: %v, redirecting to %s", err, config.RedirectURL)
 			http.Redirect(w, r, config.RedirectURL, http.StatusFound)
 			return
@@ -181,6 +196,12 @@ func handleWebSocket(proxy *httputil.ReverseProxy, port int, upstreamURL string)
 
 			claims, err := verifyJWT(token)
 			if err != nil {
+				// Check if token expired and return specific error
+				if isTokenExpired(err) {
+					log.Printf("WebSocket: JWT token expired")
+					http.Error(w, "Token Expired", http.StatusUnauthorized)
+					return
+				}
 				log.Printf("WebSocket: JWT verification failed: %v", err)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return

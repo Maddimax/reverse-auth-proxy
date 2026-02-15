@@ -17,6 +17,7 @@ type ServerConfig struct {
 type Config struct {
 	Servers       []ServerConfig
 	RedirectURL   string
+	JWTTimeoutURL string
 	JWTKeyPath    string
 	JWTCookieName string
 	PublicPaths   []string
@@ -110,6 +111,11 @@ func LoadConfig() (*Config, error) {
 		redirectURL = "http://localhost:3001/login"
 	}
 
+	jwtTimeoutURL := os.Getenv("JWT_TIMEOUT_URL")
+	if jwtTimeoutURL == "" {
+		jwtTimeoutURL = redirectURL
+	}
+
 	jwtKeyPath := os.Getenv("JWT_KEY_PATH")
 
 	jwtCookieName := os.Getenv("JWT_COOKIE_NAME")
@@ -122,6 +128,7 @@ func LoadConfig() (*Config, error) {
 	return &Config{
 		Servers:       servers,
 		RedirectURL:   redirectURL,
+		JWTTimeoutURL: jwtTimeoutURL,
 		JWTKeyPath:    jwtKeyPath,
 		JWTCookieName: jwtCookieName,
 		PublicPaths:   publicPaths,
