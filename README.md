@@ -86,17 +86,54 @@ JWT_KEY_PATH=./keys/jwt-public.pem
 
 ## Usage
 
-### Start the server
+### Local Development
+
+**Start the server:**
 
 ```bash
 npm start
 ```
 
-### Development mode (with auto-reload)
+**Development mode (with auto-reload):**
 
 ```bash
 npm run dev
 ```
+
+### Docker Deployment
+
+**Build the Docker image:**
+
+```bash
+docker build -t reverse-auth-proxy .
+```
+
+**Run with Docker:**
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e UPSTREAM_URL=http://backend:8080 \
+  -e REDIRECT_URL=http://localhost:3001/login \
+  -e JWT_KEY_PATH=/app/keys/jwt-public.pem \
+  -e JWT_COOKIE_NAME=auth_token \
+  -v $(pwd)/keys/jwt-public.pem:/app/keys/jwt-public.pem:ro \
+  --name reverse-auth-proxy \
+  reverse-auth-proxy
+```
+
+**Run with Docker Compose:**
+
+```bash
+docker-compose up -d
+```
+
+The `docker-compose.yml` file includes example configuration. Update the environment variables and volume mounts as needed.
+
+**Important for Docker:**
+- Mount your JWT key file as a read-only volume
+- Ensure the key file has proper permissions (readable by UID 1001)
+- The container runs as a non-root user for security
 
 ## How It Works
 
@@ -138,6 +175,9 @@ Your authentication service should set a cookie with a valid JWT. Example JWT pa
 You can test the proxy with curl:
 
 ```bash
+# Health check (no authentication required)
+curl http://localhost:3000/health
+
 # Without token (should redirect)
 curl -i http://localhost:3000/api/test
 

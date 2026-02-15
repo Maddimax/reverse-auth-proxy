@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  reverse-auth-proxy:
+    build: .
+    container_name: reverse-auth-proxy
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - UPSTREAM_URL=http://backend:8080
+      - REDIRECT_URL=http://localhost:3001/login
+      - JWT_KEY_PATH=/app/keys/jwt-public.pem
+      - JWT_COOKIE_NAME=auth_token
+      # - PUBLIC_PATHS=/health,/public
+    volumes:
+      # Mount your JWT key file
+      - ./keys/jwt-public.pem:/app/keys/jwt-public.pem:ro
+    restart: unless-stopped
+    networks:
+      - proxy-network
+
+networks:
+  proxy-network:
+    driver: bridge

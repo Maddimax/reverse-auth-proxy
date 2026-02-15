@@ -26,6 +26,11 @@ try {
 // Middleware
 app.use(cookieParser());
 
+// Health check endpoint (bypasses authentication)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // JWT verification middleware
 const verifyJWT = (req, res, next) => {
   // Check if path is public
