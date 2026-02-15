@@ -102,7 +102,7 @@ PUBLIC_PATHS=/health,/public
 | `PORT` | No* | 3000 | Port the proxy server listens on (single server) |
 | `UPSTREAM_URL` | No* | http://localhost:8080 | Target server to proxy to (single server) |
 | `REDIRECT_URL` | No | http://localhost:3001/login | URL to redirect to when auth fails |
-| `JWT_TIMEOUT_URL` | No | Same as `REDIRECT_URL` | URL to redirect to when JWT token expires, include parameter name (e.g., `https://example.com/auth?redirect_url=`) - original URI will be appended |
+| `JWT_TIMEOUT_URL` | No | Same as `REDIRECT_URL` | URL to redirect to when JWT token is invalid/expired. Include parameter name (e.g., `https://example.com/auth?redirect_url=`) - original URI will be appended |
 | `JWT_KEY_PATH` | **Yes** | - | Path to .pem file containing JWT public key |
 | `JWT_COOKIE_NAME` | No | auth_token | Name of the cookie containing the JWT |
 | `PUBLIC_PATHS` | No | [] | Comma-separated list of paths that bypass auth |
