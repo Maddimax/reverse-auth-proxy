@@ -4,10 +4,18 @@ services:
   reverse-auth-proxy:
     image: maddimax/reverse-auth-proxy:latest
     ports:
+      # Expose all ports defined in SERVERS
       - "3000:3000"
+      - "3001:3001"
+      - "3002:3002"
     environment:
-      - PORT=3000
-      - UPSTREAM_URL=http://backend:8080
+      # Multiple servers configuration (recommended)
+      - SERVERS=3000:http://backend1:8080,3001:http://backend2:8081,3002:http://backend3:8082
+      
+      # Single server configuration (alternative - comment out SERVERS above and uncomment below)
+      # - PORT=3000
+      # - UPSTREAM_URL=http://backend:8080
+      
       - REDIRECT_URL=http://localhost:3001/login
       - JWT_KEY_PATH=/app/keys/jwt-public.pem
       - JWT_COOKIE_NAME=auth_token

@@ -7,8 +7,6 @@ const path = require('path');
 const http = require('http');
 const config = require('./config');
 
-const app = express();
-
 // Load JWT key from file
 let jwtKey;
 try {
@@ -23,78 +21,6 @@ try {
   console.error(`ERROR: Failed to load JWT key from ${config.jwtKeyPath}:`, error.message);
   process.exit(1);
 }
-
-// Middleware
-app.use(cookieParser());
-
-// Health check endpoint (bypasses authentication)
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// JWT verification middleware
-const verifyJWT = (req, res, next) => {
-  // Check if path is public
-  if (config.publicPaths.some(path => req.path.startsWith(path))) {
-    return next();
-  }
-
-  const token = req.cookies[config.jwtCookieName];
-
-  if (!token) {
-    console.log(`No token found in cookie '${config.jwtCookieName}', redirecting to ${config.redirectUrl}`);
-    return res.redirect(config.redirectUrl);
-  }
-
-  try {
-    const decoded = jwt.verify(token, jwtKey);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    console.log(`JWT verification failed: ${error.message}, redirecting to ${config.redirectUrl}`);
-    return res.redirect(config.redirectUrl);
-  }
-};
-
-// Apply JWT verification to all routes
-app.use(verifyJWT);
-
-// Reverse proxy middleware
-const proxyMiddleware = createProxyMiddleware({
-  target: config.upstreamUrl,
-  changeOrigin: true,
-  ws: true, // Enable WebSocket support
-  onProxyReq: (proxyReq, req, res) => {
-    // Add user information to request headers if available
-    if (req.user) {
-      proxyReq.setHeader('X-User-Id', req.user.userId || req.user.sub || '');
-      proxyReq.setHeader('X-User-Email', req.user.email || '');
-    }
-    console.log(`Proxying ${req.method} ${req.path} to ${config.upstreamUrl}`);
-  },
-  onProxyReqWs: (proxyReq, req, socket, options, head) => {
-    // Add user information to WebSocket upgrade request headers if available
-    if (req.user) {
-      proxyReq.setHeader('X-User-Id', req.user.userId || req.user.sub || '');
-      proxyReq.setHeader('X-User-Email', req.user.email || '');
-    }
-    console.log(`Proxying WebSocket upgrade for ${req.url} to ${config.upstreamUrl}`);
-  },
-  onError: (err, req, res) => {
-    console.error('Proxy error:', err);
-    if (res.writeHead) {
-      res.status(502).json({ error: 'Bad Gateway', message: 'Failed to connect to upstream server' });
-    }
-  }
-});
-
-app.use('/', proxyMiddleware);
-
-// Error handling
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal Server Error' });
-});
 
 // Helper function to parse cookies from header string
 function parseCookies(cookieHeader) {
@@ -136,29 +62,119 @@ function verifyWebSocketJWT(req) {
   }
 }
 
-// Create HTTP server
-const server = http.createServer(app);
+// Function to create a server instance for a specific port/upstream pair
+function createServerInstance(serverConfig) {
+  const app = express();
 
-// Handle WebSocket upgrades with JWT verification
-server.on('upgrade', (req, socket, head) => {
-  if (!verifyWebSocketJWT(req)) {
-    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-    socket.destroy();
-    return;
-  }
+  // Middleware
+  app.use(cookieParser());
 
-  // Let the proxy middleware handle the upgrade
-  proxyMiddleware.upgrade(req, socket, head);
+  // Health check endpoint (bypasses authentication)
+  app.get('/health', (req, res) => {
+    res.status(200).json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      port: serverConfig.port,
+      upstream: serverConfig.upstreamUrl
+    });
+  });
+
+  // JWT verification middleware
+  const verifyJWT = (req, res, next) => {
+    // Check if path is public
+    if (config.publicPaths.some(path => req.path.startsWith(path))) {
+      return next();
+    }
+
+    const token = req.cookies[config.jwtCookieName];
+
+    if (!token) {
+      console.log(`No token found in cookie '${config.jwtCookieName}', redirecting to ${config.redirectUrl}`);
+      return res.redirect(config.redirectUrl);
+    }
+
+    try {
+      const decoded = jwt.verify(token, jwtKey);
+      req.user = decoded;
+      next();
+    } catch (error) {
+      console.log(`JWT verification failed: ${error.message}, redirecting to ${config.redirectUrl}`);
+      return res.redirect(config.redirectUrl);
+    }
+  };
+
+  // Apply JWT verification to all routes
+  app.use(verifyJWT);
+
+  // Reverse proxy middleware
+  const proxyMiddleware = createProxyMiddleware({
+    target: serverConfig.upstreamUrl,
+    changeOrigin: true,
+    ws: true, // Enable WebSocket support
+    onProxyReq: (proxyReq, req, res) => {
+      // Add user information to request headers if available
+      if (req.user) {
+        proxyReq.setHeader('X-User-Id', req.user.userId || req.user.sub || '');
+        proxyReq.setHeader('X-User-Email', req.user.email || '');
+      }
+      console.log(`[Port ${serverConfig.port}] Proxying ${req.method} ${req.path} to ${serverConfig.upstreamUrl}`);
+    },
+    onProxyReqWs: (proxyReq, req, socket, options, head) => {
+      // Add user information to WebSocket upgrade request headers if available
+      if (req.user) {
+        proxyReq.setHeader('X-User-Id', req.user.userId || req.user.sub || '');
+        proxyReq.setHeader('X-User-Email', req.user.email || '');
+      }
+      console.log(`[Port ${serverConfig.port}] Proxying WebSocket upgrade for ${req.url} to ${serverConfig.upstreamUrl}`);
+    },
+    onError: (err, req, res) => {
+      console.error(`[Port ${serverConfig.port}] Proxy error:`, err);
+      if (res.writeHead) {
+        res.status(502).json({ error: 'Bad Gateway', message: 'Failed to connect to upstream server' });
+      }
+    }
+  });
+
+  app.use('/', proxyMiddleware);
+
+  // Error handling
+  app.use((err, req, res, next) => {
+    console.error(`[Port ${serverConfig.port}] Server error:`, err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  });
+
+  // Create HTTP server
+  const server = http.createServer(app);
+
+  // Handle WebSocket upgrades with JWT verification
+  server.on('upgrade', (req, socket, head) => {
+    if (!verifyWebSocketJWT(req)) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    // Let the proxy middleware handle the upgrade
+    proxyMiddleware.upgrade(req, socket, head);
+  });
+
+  return { server, port: serverConfig.port, upstreamUrl: serverConfig.upstreamUrl };
+}
+
+// Create and start all server instances
+const servers = config.servers.map(serverConfig => {
+  const instance = createServerInstance(serverConfig);
+  instance.server.listen(instance.port, () => {
+    console.log(`Reverse Auth Proxy running on port ${instance.port}`);
+    console.log(`  -> Proxying to: ${instance.upstreamUrl}`);
+    console.log(`  -> Redirect URL: ${config.redirectUrl}`);
+    console.log(`  -> JWT Cookie: ${config.jwtCookieName}`);
+    console.log(`  -> WebSocket support: enabled`);
+    if (config.publicPaths.length > 0) {
+      console.log(`  -> Public paths: ${config.publicPaths.join(', ')}`);
+    }
+  });
+  return instance;
 });
 
-// Start server
-server.listen(config.port, () => {
-  console.log(`Reverse Auth Proxy running on port ${config.port}`);
-  console.log(`Proxying to: ${config.upstreamUrl}`);
-  console.log(`Redirect URL: ${config.redirectUrl}`);
-  console.log(`JWT Cookie: ${config.jwtCookieName}`);
-  console.log(`WebSocket support: enabled`);
-  if (config.publicPaths.length > 0) {
-    console.log(`Public paths: ${config.publicPaths.join(', ')}`);
-  }
-});
+console.log(`\nTotal servers started: ${servers.length}`);
