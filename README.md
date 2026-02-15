@@ -1,6 +1,6 @@
 # Reverse Auth Proxy
 
-A simple Express-based reverse proxy with JWT authentication. This proxy verifies JWT tokens from cookies before forwarding requests to an upstream server. If authentication fails, users are redirected to a configurable login URL.
+A lightweight, high-performance reverse proxy with JWT authentication written in Go. This proxy verifies JWT tokens from cookies before forwarding requests to an upstream server. If authentication fails, users are redirected to a configurable login URL.
 
 ## Features
 
@@ -12,11 +12,37 @@ A simple Express-based reverse proxy with JWT authentication. This proxy verifie
 - 🚀 Simple configuration via environment variables
 - 🔓 Support for public paths (bypass authentication)
 - 📝 Automatic user info forwarding to upstream via headers
+- ⚡ High performance with low memory footprint
+- 🐳 Docker support with minimal Alpine-based image
 
 ## Installation
 
+### Prerequisites
+
+- Go 1.21 or later (for building from source)
+- Docker (for containerized deployment)
+
+### From Source
+
 ```bash
-npm install
+# Clone the repository
+git clone https://github.com/Maddimax/reverse-auth-proxy.git
+cd reverse-auth-proxy
+
+# Download dependencies
+go mod download
+
+# Build the application
+go build -o reverse-auth-proxy .
+
+# Run
+./reverse-auth-proxy
+```
+
+### Using Docker
+
+```bash
+docker pull maddimax/reverse-auth-proxy:go
 ```
 
 ## Configuration
@@ -135,16 +161,20 @@ All servers share the same JWT authentication configuration and redirect URL. Ea
 
 ### Local Development
 
-**Start the server:**
+**Build and run:**
 
 ```bash
-npm start
+# Build
+go build -o reverse-auth-proxy .
+
+# Run
+./reverse-auth-proxy
 ```
 
-**Development mode (with auto-reload):**
+**Using go run (for development):**
 
 ```bash
-npm run dev
+go run .
 ```
 
 ### Docker Deployment
@@ -261,14 +291,17 @@ curl http://localhost:3002/health
 # Each server independently handles requests to its upstream
 curl -i http://localhost:3000/api/data --cookie "auth_token=your.jwt.token"
 curl -i http://localhost:3001/api/data --cookie "auth_token=your.jwt.token"
-```
-
-### Testing WebSocket Connections
-
-You can test WebSocket connections using tools like `wscat`:
+```ebsocat`:
 
 ```bash
-# Install wscat
+# Install websocat (https://github.com/vi/websocat)
+# macOS
+brew install websocat
+
+# Or download from GitHub releases
+
+# Connect to WebSocket with authentication cookie
+websocatl wscat
 npm install -g wscat
 
 # Connect to WebSocket with authentication cookie

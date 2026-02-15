@@ -1,11 +1,44 @@
+# Binaries (exclude from build context)
+reverse-auth-proxy
+*.exe
+*.test
+*.out
+
+# Node.js (legacy)
 node_modules
 npm-debug.log
+yarn-error.log
+
+# Go workspace
+go.work
+vendor/
+
+# Environment and config files
 .env
 .env.example
+.env.local
+
+# Git files
 .git
 .gitignore
+
+# Documentation
 README.md
 *.md
+
+# IDE and OS files
 .DS_Store
+.idea
+.vscode
+*.swp
+*.swo
+
+# Keys (don't include in image, mounted at runtime)
 *.pem
 keys/*.pem
+
+# Build scripts and Docker files
+docker-compose.yml
+Dockerfile
+.dockerignore
+build.sh

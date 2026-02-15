@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   reverse-auth-proxy:
-    image: maddimax/reverse-auth-proxy:latest
+    image: maddimax/reverse-auth-proxy:go
     ports:
       # Expose all ports defined in SERVERS
       - "3000:3000"

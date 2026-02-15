@@ -1,7 +1,41 @@
+# Go binaries
+reverse-auth-proxy
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries and coverage
+*.test
+*.out
+coverage.txt
+
+# Go workspace
+go.work
+
+# Node.js (legacy files)
 node_modules/
-.env
 npm-debug.log
-.DS_Store
-*.log
+
+# Environment files
+.env
+.env.local
+
+# Keys and secrets
 *.pem
 keys/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
