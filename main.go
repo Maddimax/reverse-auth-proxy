@@ -99,7 +99,12 @@ func authMiddleware(next http.Handler) http.Handler {
 		claims, err := verifyJWT(cookie.Value)
 		if err != nil {
 			// Token exists but failed validation - redirect to JWT timeout/refresh URL
-			authURL := config.JWTTimeoutURL + url.QueryEscape(r.RequestURI)
+			proto := r.Header.Get("X-Forwarded-Proto")
+			if proto == "" {
+				proto = "https"
+			}
+			fullURL := proto + "://" + r.Host + r.RequestURI
+			authURL := config.JWTTimeoutURL + url.QueryEscape(fullURL)
 			log.Printf("JWT invalid, redirecting to %s", authURL)
 			http.Redirect(w, r, authURL, http.StatusFound)
 			return
